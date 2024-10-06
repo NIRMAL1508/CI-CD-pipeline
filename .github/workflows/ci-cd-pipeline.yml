@@ -1,0 +1,41 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main  # Change this to your default branch if it's not `main`
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout the repository code
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    # Step 2: Log in to Amazon ECR
+    - name: Log in to Amazon ECR
+      id: ecr-login
+      uses: aws-actions/amazon-ecr-login@v1
+
+    # Step 3: Set up Docker Buildx for multi-platform builds
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    # Step 4: Build the Docker image
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ secrets.ECR_REPOSITORY }}:latest .
+
+    # Step 5: Tag the image with the ECR repository URI
+    - name: Tag Docker image
+      run: |
+        IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest"
+        docker tag ${{ secrets.ECR_REPOSITORY }}:latest $IMAGE_URI
+
+    # Step 6: Push the image to AWS ECR
+    - name: Push Docker image to Amazon ECR
+      run: |
+        IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest"
+        docker push $IMAGE_URI
